@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>WebSocket Notifications</title>
+  <style>
+    body { font-family: sans-serif; margin: 2em; }
+    #log { padding: 1em; background: #f4f4f4; border: 1px solid #ccc; max-width: 600px; }
+    .msg { margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Live Notifications</h1>
+  <div id="log"></div>
+
+  <script>
+    const log = document.getElementById("log");
+    const ws = new WebSocket("ws://localhost:8080/ws");
+
+    ws.onmessage = (event) => {
+      const notif = JSON.parse(event.data);
+      const msg = document.createElement("div");
+      msg.className = "msg";
+      msg.textContent = `📩 ${notif.Message}`;
+      log.appendChild(msg);
+    };
+
+    ws.onopen = () => console.log("Connected to WebSocket");
+    ws.onerror = (e) => console.error("error WS", e);
+  </script>
+</body>
+</html>
