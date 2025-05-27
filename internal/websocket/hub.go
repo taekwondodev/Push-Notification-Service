@@ -9,12 +9,9 @@ import (
 )
 
 type Hub struct {
-	Upgrader   websocket.Upgrader
-	Clients    map[*websocket.Conn]bool
-	Broadcast  chan []byte
-	Register   chan *websocket.Conn
-	Unregister chan *websocket.Conn
-	mu         sync.Mutex
+	Upgrader websocket.Upgrader
+	clients  map[string][]*websocket.Conn
+	mu       sync.Mutex
 }
 
 func NewHub() *Hub {
@@ -22,42 +19,51 @@ func NewHub() *Hub {
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
 	return &Hub{
-		Upgrader:   up,
-		Clients:    make(map[*websocket.Conn]bool),
-		Broadcast:  make(chan []byte),
-		Register:   make(chan *websocket.Conn),
-		Unregister: make(chan *websocket.Conn),
+		Upgrader: up,
+		clients:  make(map[string][]*websocket.Conn),
 	}
 }
 
-func (h *Hub) Run() {
-	for {
-		select {
-		case conn := <-h.Register:
-			h.mu.Lock()
-			h.Clients[conn] = true
-			h.mu.Unlock()
-			log.Println("New client registered")
+func (h *Hub) Register(user string, conn *websocket.Conn) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.clients[user] = append(h.clients[user], conn)
+	log.Printf("[%s] connected (%d conn)\n", user, len(h.clients[user]))
+}
 
-		case conn := <-h.Unregister:
-			h.mu.Lock()
-			if _, ok := h.Clients[conn]; ok {
-				delete(h.Clients, conn)
-				conn.Close()
-				log.Println("Client unregistered")
-			}
-			h.mu.Unlock()
-		case message := <-h.Broadcast:
-			h.mu.Lock()
-			for conn := range h.Clients {
-				err := conn.WriteMessage(websocket.TextMessage, message)
-				if err != nil {
-					log.Println("error message sent:", err)
-					conn.Close()
-					delete(h.Clients, conn)
-				}
-			}
-			h.mu.Unlock()
+func (h *Hub) Unregister(user string, conn *websocket.Conn) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	conns := h.clients[user]
+	for i, c := range conns {
+		if c == conn {
+			h.clients[user] = append(conns[:i], conns[i+1:]...)
+			c.Close()
+			break
+		}
+	}
+	if len(h.clients[user]) == 0 {
+		delete(h.clients, user)
+		log.Printf("[%s] disconnected\n", user)
+	}
+}
+
+func (h *Hub) SendToUser(user string, message []byte) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	conns, ok := h.clients[user]
+	if !ok {
+		log.Printf("User [%s] not connected, notifica persa\n", user)
+		return
+	}
+
+	for _, conn := range conns {
+		err := conn.WriteMessage(websocket.TextMessage, message)
+		if err != nil {
+			log.Println("error WebSocket:", err)
+			conn.Close()
 		}
 	}
 }
