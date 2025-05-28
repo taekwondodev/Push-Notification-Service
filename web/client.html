@@ -1,24 +1,86 @@
 <!DOCTYPE html>
 <html lang="it">
+
 <head>
   <meta charset="UTF-8">
-  <title>Notifiche per Bob</title>
+  <title>Live Notifications</title>
 </head>
+
 <body>
-  <h1>Notifiche in tempo reale per Bob</h1>
-  <div id="log"></div>
+  <h1>Notifications for <span id="user-label"></span></h1>
+
+  <ul id="notifications"></ul>
+
+  <hr>
+
+  <h2>Send a notif to an user</h2>
+  <form id="send-form">
+    <input type="text" id="receiver" placeholder="Receiver (es. bob)" required>
+    <input type="text" id="message" placeholder="Message..." required>
+    <button type="submit">Invia</button>
+  </form>
 
   <script>
-    const user = "bob";
-    const ws = new WebSocket("ws://localhost:8080/ws?user=" + user);
-    const log = document.getElementById("log");
+    const user = prompt("Insert your username:");
+    document.getElementById("user-label").innerText = user;
 
-    ws.onmessage = (event) => {
-      const notif = JSON.parse(event.data);
-      const p = document.createElement("p");
-      p.textContent = `📬 Da: ${notif.From} → ${notif.Message}`;
-      log.appendChild(p);
+    async function loadHistoricalNotifications() {
+      try {
+        const response = await fetch(`http://localhost:8080/notifications?user=${user}`);
+        const notifications = await response.json();
+
+        notifications.forEach(n => {
+          addNotificationToUI(n);
+        });
+      } catch (error) {
+        console.error("Errore caricamento notifiche storiche:", error);
+      }
+    }
+
+    function addNotificationToUI(n) {
+      const li = document.createElement("li");
+      li.textContent = `[${n.sender}] ${n.message}`;
+      li.style.cursor = "pointer";
+
+      if (n.read) {
+        li.style.textDecoration = "line-through";
+      }
+
+      li.onclick = () => {
+        fetch(`http://localhost:8080/notifications/${n.id}/read`, {
+          method: "POST"
+        }).then(() => {
+          li.style.textDecoration = "line-through";
+        });
+      };
+
+      ul.prepend(li);
+    }
+
+    loadHistoricalNotifications();
+
+    const socket = new WebSocket(`ws://localhost:8080/ws?user=${user}`);
+    const ul = document.getElementById("notifications");
+
+    socket.onmessage = (event) => {
+      const n = JSON.parse(event.data);
+      addNotificationToUI(n);
+    };
+
+    document.getElementById("send-form").onsubmit = async (e) => {
+      e.preventDefault();
+      const receiver = document.getElementById("receiver").value;
+      const message = document.getElementById("message").value;
+
+      await fetch("http://localhost:8080/notifications", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({sender: user, receiver, message})
+      });
+
+      document.getElementById("message").value = "";
     };
   </script>
 </body>
+
 </html>

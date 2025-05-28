@@ -7,6 +7,7 @@ import (
 
 	"github.com/taekwondodev/push-notification-service/internal/models"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -64,4 +65,21 @@ func (r *NotificationRepository) GetNotifications(ctx context.Context, user stri
 		return nil, err
 	}
 	return notifications, nil
+}
+
+func (r *NotificationRepository) MarkAsRead(ctx context.Context, id string) error {
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.collection.UpdateOne(
+		ctx,
+		bson.M{"_id": objID},
+		bson.M{"$set": bson.M{"read": true}},
+	)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -23,15 +23,17 @@ func main() {
 		log.Fatal("Failed to connect to MongoDB:", err)
 	}
 	defer repo.Close()
+	router := http.NewServeMux()
 
 	go consumeKafka(hub, repo)
 
-	http.HandleFunc("/ws", handleWebSocket)
-
-	http.HandleFunc("/notifications", getNotificationsHandler)
+	router.HandleFunc("GET /ws", handleWebSocket)
+	router.HandleFunc("GET /notifications", getNotificationsHandler)
+	router.HandleFunc("POST /notifications", postNotificationHandler)
+	router.HandleFunc("POST /notifications/{id}/read", markNotificationAsRead)
 
 	log.Println("WebSocket server listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", router))
 }
 
 func consumeKafka(hub *websocket.Hub, db *db.NotificationRepository) {
@@ -98,4 +100,40 @@ func getNotificationsHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(notifications)
+}
+
+func postNotificationHandler(w http.ResponseWriter, r *http.Request) {
+	var n models.Notification
+	if err := json.NewDecoder(r.Body).Decode(&n); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	n.CreatedAt = time.Now().Unix()
+	n.Read = false
+
+	msg, _ := json.Marshal(n)
+	writer := kafka.Writer{
+		Addr:     kafka.TCP("kafka:9092"),
+		Topic:    "notifications",
+		Balancer: &kafka.LeastBytes{},
+	}
+	defer writer.Close()
+
+	err := writer.WriteMessages(r.Context(), kafka.Message{Value: msg})
+	if err != nil {
+		http.Error(w, "Kafka error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+}
+
+func markNotificationAsRead(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if err := repo.MarkAsRead(r.Context(), id); err != nil {
+		http.Error(w, "Failed to mark notification as read", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

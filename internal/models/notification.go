@@ -9,5 +9,6 @@ type Notification struct {
 	Sender    string             `json:"sender" bson:"sender"`
 	Receiver  string             `json:"receiver" bson:"receiver"`
 	Message   string             `json:"message" bson:"message"`
-	CreatedAt int64              `json:"createdAt" bson:"createdAt"`
+	Read      bool               `json:"read" bson:"read,omitzero"`
+	CreatedAt int64              `json:"createdAt" bson:"createdAt,omitzero"`
 }
