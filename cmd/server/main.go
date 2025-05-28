@@ -5,12 +5,16 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/segmentio/kafka-go"
 	"github.com/taekwondodev/push-notification-service/internal/db"
 	"github.com/taekwondodev/push-notification-service/internal/models"
 	"github.com/taekwondodev/push-notification-service/internal/websocket"
 )
+
+var hub *websocket.Hub
+var repo *db.NotificationRepository
 
 func main() {
 	hub := websocket.NewHub()
@@ -22,29 +26,9 @@ func main() {
 
 	go consumeKafka(hub, repo)
 
-	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		user := r.URL.Query().Get("user")
-		if user == "" {
-			http.Error(w, "need user", http.StatusBadRequest)
-			return
-		}
+	http.HandleFunc("/ws", handleWebSocket)
 
-		conn, err := hub.Upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			log.Println("error WebSocket:", err)
-			return
-		}
-		hub.Register(user, conn)
-
-		go func() {
-			defer hub.Unregister(user, conn)
-			for {
-				if _, _, err := conn.ReadMessage(); err != nil {
-					break
-				}
-			}
-		}()
-	})
+	http.HandleFunc("/notifications", getNotificationsHandler)
 
 	log.Println("WebSocket server listening on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -72,11 +56,46 @@ func consumeKafka(hub *websocket.Hub, db *db.NotificationRepository) {
 			continue
 		}
 
-		if err := db.SaveNotification(&notif); err != nil {
+		notif.CreatedAt = time.Now().Unix()
+
+		if err := db.SaveNotification(context.Background(), &notif); err != nil {
 			log.Println("error saving notification to DB:", err)
 		}
 
-		payload, _ := json.Marshal(notif)
-		hub.SendToUser(notif.To, payload)
+		hub.SendToUser(notif.Receiver, notif)
 	}
+}
+
+func handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	user := r.URL.Query().Get("user")
+	if user == "" {
+		http.Error(w, "need user", http.StatusBadRequest)
+		return
+	}
+
+	conn, err := hub.Upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("WebSocket upgrade failed:", err)
+		return
+	}
+	hub.Register(user, conn)
+
+	log.Println("User connected via WebSocket:", user)
+}
+
+func getNotificationsHandler(w http.ResponseWriter, r *http.Request) {
+	user := r.URL.Query().Get("user")
+	if user == "" {
+		http.Error(w, "need user", http.StatusBadRequest)
+		return
+	}
+
+	notifications, err := repo.GetNotifications(r.Context(), user)
+	if err != nil {
+		http.Error(w, "failed to fetch notifications", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(notifications)
 }

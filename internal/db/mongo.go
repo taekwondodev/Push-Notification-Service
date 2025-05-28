@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/taekwondodev/push-notification-service/internal/models"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -46,10 +47,21 @@ func (r *NotificationRepository) Close() error {
 	return r.client.Disconnect(ctx)
 }
 
-func (r *NotificationRepository) SaveNotification(notif *models.Notification) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *NotificationRepository) SaveNotification(ctx context.Context, notif *models.Notification) error {
 	_, err := r.collection.InsertOne(ctx, notif)
 	return err
+}
+
+func (r *NotificationRepository) GetNotifications(ctx context.Context, user string) ([]models.Notification, error) {
+	cursor, err := r.collection.Find(ctx, bson.M{"receiver": user})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var notifications []models.Notification
+	if err := cursor.All(ctx, &notifications); err != nil {
+		return nil, err
+	}
+	return notifications, nil
 }
