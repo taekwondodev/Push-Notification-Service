@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"time"
 
 	"github.com/segmentio/kafka-go"
@@ -49,18 +50,23 @@ func (k *KafkaService) PublishNotification(ctx context.Context, notification *mo
     return nil
 }
 
-func (k *KafkaService) StartConsumer(ctx context.Context) {
+func (k *KafkaService) StartConsumer(ctx context.Context) error {
     reader := kafka.NewReader(kafka.ReaderConfig{
         Brokers: k.config.Brokers,
         Topic:   k.config.Topic,
         GroupID: k.config.GroupID,
+        MinBytes: 1,
+        MaxBytes: 10e6,
     })
     defer reader.Close()
     
+    log.Printf("Kafka consumer started for topic: %s", k.config.Topic)
+
     for {
         select {
         case <-ctx.Done():
-            return
+            log.Println("Kafka consumer shutting down...")
+            return ctx.Err()
         default:
             msg, err := reader.ReadMessage(context.Background())
             if err != nil {
@@ -73,10 +79,11 @@ func (k *KafkaService) StartConsumer(ctx context.Context) {
             }
 
             if err := k.notifSvc.CreateNotification(context.Background(), &notif); err != nil {
-                // return err
+               continue
             }
 
             k.hub.SendToUser(notif.Receiver, notif)
+            log.Printf("Notification processed for user: %s", notif.Receiver)
         }
     }
 }

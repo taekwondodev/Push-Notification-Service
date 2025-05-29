@@ -2,13 +2,8 @@ package main
 
 import (
 	"context"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
+	"github.com/taekwondodev/push-notification-service/internal/api"
 	"github.com/taekwondodev/push-notification-service/internal/config"
 	"github.com/taekwondodev/push-notification-service/internal/controller"
 	"github.com/taekwondodev/push-notification-service/internal/repository"
@@ -19,10 +14,7 @@ import (
 func main() {
     cfg := config.Load()
 
-    repo, err := repository.NewMongoNotificationRepository(cfg.Mongo.URI, cfg.Mongo.Database)
-    if err != nil {
-        log.Fatal("failed to connect to database", "error", err)
-    }
+    repo := repository.NewMongoNotificationRepository(cfg.Mongo.URI, cfg.Mongo.Database)
     defer repo.Close()
     
     notifService := service.NewNotificationService(repo)
@@ -33,39 +25,13 @@ func main() {
     wsController := controller.NewWebSocketController(hub)
     
     ctx, cancel := context.WithCancel(context.Background())
-    go kafkaService.StartConsumer(ctx)
-    
-    router := http.NewServeMux()
-    router.HandleFunc("GET /ws", wsController.HandleConnection)
-    router.HandleFunc("GET /notifications", notifController.GetNotifications)
-    router.HandleFunc("POST /notifications", notifController.CreateNotification)
-    router.HandleFunc("POST /notifications/{id}/read", notifController.MarkAsRead)
-    
-    server := &http.Server{
-        Addr:    ":" + cfg.Server.Port,
-        Handler: router,
-    }
-    
-    go func() {
-        log.Println("server starting", "port", cfg.Server.Port)
-        if err := server.ListenAndServe(); err != http.ErrServerClosed {
-            log.Fatal("server failed", "error", err)
+    go func () {
+        if err := kafkaService.StartConsumer(ctx); err != nil {
+            cancel()
         }
     }()
     
-    quit := make(chan os.Signal, 1)
-    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-    <-quit
-    
-    log.Println("shutting down server...")
-    
-    cancel()
-    ctx, cancelShutdown := context.WithTimeout(context.Background(), 30*time.Second)
-    defer cancelShutdown()
-    
-    if err := server.Shutdown(ctx); err != nil {
-        log.Fatal("server forced to shutdown", "error", err)
-    }
-    
-    log.Println("server exited")
+    router := api.SetupRoutes(notifController, wsController)
+    server := api.NewServer(cfg.Server.Port, router)
+    server.StartWithGracefulShutdown()
 }

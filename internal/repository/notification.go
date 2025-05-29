@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/taekwondodev/push-notification-service/internal/models"
@@ -23,18 +24,18 @@ type mongoNotificationRepository struct {
     collection *mongo.Collection
 }
 
-func NewMongoNotificationRepository(uri, database string) (NotificationRepository, error) {
+func NewMongoNotificationRepository(uri, database string) NotificationRepository {
     ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
     defer cancel()
 
     clientOpts := options.Client().ApplyURI(uri)
     client, err := mongo.Connect(ctx, clientOpts)
     if err != nil {
-        return nil, err
+        log.Fatal("failed to connect to database", "error", err)
     }
 
     if err := client.Ping(ctx, nil); err != nil {
-        return nil, err
+        log.Fatal("failed to connect to database", "error", err)
     }
 
     collection := client.Database(database).Collection("notifications")
@@ -42,7 +43,7 @@ func NewMongoNotificationRepository(uri, database string) (NotificationRepositor
     return &mongoNotificationRepository{
         client:     client,
         collection: collection,
-    }, nil
+    }
 }
 
 func (r *mongoNotificationRepository) Save(ctx context.Context, notification *models.Notification) error {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/taekwondodev/push-notification-service/internal/customerrors"
 	"github.com/taekwondodev/push-notification-service/internal/models"
 	"github.com/taekwondodev/push-notification-service/internal/service"
 )
@@ -20,51 +21,46 @@ func NewNotificationController(notifSvc *service.NotificationService, kafkaSvc *
     }
 }
 
-func (h *NotificationController) GetNotifications(w http.ResponseWriter, r *http.Request) {
+func (h *NotificationController) GetNotifications(w http.ResponseWriter, r *http.Request) error {
     user := r.URL.Query().Get("user")
     if user == "" {
-        http.Error(w, "user parameter required", http.StatusBadRequest)
-        return
+        return customerrors.ErrBadRequest
     }
 
     notifications, err := h.notifSvc.GetNotificationsByReceiver(r.Context(), user)
     if err != nil {
-        http.Error(w, "failed to fetch notifications", http.StatusInternalServerError)
-        return
+        return err
     }
 
     w.Header().Set("Content-Type", "application/json")
-    if err := json.NewEncoder(w).Encode(notifications); err != nil {
-		// return err
-    }
+    w.WriteHeader(http.StatusOK)
+    return json.NewEncoder(w).Encode(notifications)
 }
 
-func (h *NotificationController) CreateNotification(w http.ResponseWriter, r *http.Request) {
+func (h *NotificationController) CreateNotification(w http.ResponseWriter, r *http.Request) error {
     var notification models.Notification
     if err := json.NewDecoder(r.Body).Decode(&notification); err != nil {
-        http.Error(w, "invalid JSON", http.StatusBadRequest)
-        return
+        return customerrors.ErrBadRequest
     }
 
     if err := h.kafkaSvc.PublishNotification(r.Context(), &notification); err != nil {
-        http.Error(w, "failed to publish notification", http.StatusInternalServerError)
-        return
+        return err
     }
 
     w.WriteHeader(http.StatusAccepted)
+    return nil
 }
 
-func (h *NotificationController) MarkAsRead(w http.ResponseWriter, r *http.Request) {
+func (h *NotificationController) MarkAsRead(w http.ResponseWriter, r *http.Request) error {
     id := r.PathValue("id")
     if id == "" {
-        http.Error(w, "id parameter required", http.StatusBadRequest)
-        return
+        return customerrors.ErrBadRequest
     }
 
     if err := h.notifSvc.MarkAsRead(r.Context(), id); err != nil {
-        http.Error(w, "failed to mark notification as read", http.StatusInternalServerError)
-        return
+        return err
     }
 
     w.WriteHeader(http.StatusOK)
+    return nil
 }
