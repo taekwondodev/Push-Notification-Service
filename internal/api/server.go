@@ -18,7 +18,7 @@ type Server struct {
 func NewServer(addr string, router *http.ServeMux) *Server {
 	return &Server{
 		Server: &http.Server{
-			Addr:    addr,
+			Addr:    ":" + addr,
 			Handler: router,
 		},
 		shutdownTimeout: 10 * time.Second,

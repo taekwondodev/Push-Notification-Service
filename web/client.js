@@ -35,7 +35,9 @@ class NotificationApp {
       this.updateConnectionStatus("connecting", "Loading notifications...");
 
       const response = await fetch(
-        `/notifications?user=${encodeURIComponent(this.user)}`
+        `http://127.0.0.1:8080/notifications?user=${encodeURIComponent(
+          this.user
+        )}`
       );
 
       if (!response.ok) {
@@ -64,9 +66,9 @@ class NotificationApp {
       this.updateConnectionStatus("connecting", "Connecting...");
 
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${protocol}//${
-        window.location.host
-      }/ws?user=${encodeURIComponent(this.user)}`;
+      const wsUrl = `${protocol}//127.0.0.1:8080/ws?user=${encodeURIComponent(
+        this.user
+      )}`;
 
       this.socket = new WebSocket(wsUrl);
 
@@ -140,7 +142,9 @@ class NotificationApp {
 
     try {
       const response = await fetch(
-        `/notifications/${encodeURIComponent(notificationId)}/read`,
+        `http://127.0.0.1:8080/notifications/${encodeURIComponent(
+          notificationId
+        )}/read`,
         {
           method: "POST",
           headers: {
@@ -176,7 +180,7 @@ class NotificationApp {
     }
 
     try {
-      const response = await fetch("/notifications", {
+      const response = await fetch("http://127.0.0.1:8080/notifications", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

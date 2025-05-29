@@ -12,6 +12,7 @@ var router *http.ServeMux
 func SetupRoutes(notifC *controller.NotificationController, wsC *controller.WebSocketController) *http.ServeMux {
 	router = http.NewServeMux()
 
+	router.Handle("/", middleware.CorsMiddleware(router))
 	setupNotificationRoutes(notifC)
 	setupWSRoutes(wsC)
 
@@ -19,9 +20,9 @@ func SetupRoutes(notifC *controller.NotificationController, wsC *controller.WebS
 }
 
 func applyMiddleware(h middleware.HandlerFunc) http.HandlerFunc {
-	return middleware.ErrorHandler(
-		middleware.LoggingMiddleware(h),
-	)
+	handlerWithLogging := middleware.LoggingMiddleware(h)
+	errorHandler := middleware.ErrorHandler(handlerWithLogging)
+	return middleware.CorsMiddleware(errorHandler)
 }
 
 func setupNotificationRoutes(notifC *controller.NotificationController) {
