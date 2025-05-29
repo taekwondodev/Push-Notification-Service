@@ -1,86 +1,54 @@
 <!DOCTYPE html>
 <html lang="it">
-
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Live Notifications</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
 </head>
-
 <body>
-  <h1>Notifications for <span id="user-label"></span></h1>
+  <div class="container">
+    <header>
+      <h1>Notifications for <span id="user-label"></span></h1>
+    </header>
 
-  <ul id="notifications"></ul>
+    <main>
+      <section class="notifications-section">
+        <h2>Your Notifications</h2>
+        <ul id="notifications" class="notifications-list"></ul>
+      </section>
 
-  <hr>
+      <hr>
 
-  <h2>Send a notif to an user</h2>
-  <form id="send-form">
-    <input type="text" id="receiver" placeholder="Receiver (es. bob)" required>
-    <input type="text" id="message" placeholder="Message..." required>
-    <button type="submit">Invia</button>
-  </form>
+      <section class="send-section">
+        <h2>Send a notification to a user</h2>
+        <form id="send-form" class="send-form">
+          <div class="form-group">
+            <input 
+              type="text" 
+              id="receiver" 
+              placeholder="Receiver (es. bob)" 
+              required
+              class="form-input"
+            >
+          </div>
+          <div class="form-group">
+            <input 
+              type="text" 
+              id="message" 
+              placeholder="Message..." 
+              required
+              class="form-input"
+            >
+          </div>
+          <button type="submit" class="btn btn-primary">Send</button>
+        </form>
+      </section>
+    </main>
 
-  <script>
-    const user = prompt("Insert your username:");
-    document.getElementById("user-label").innerText = user;
+    <div id="connection-status" class="connection-status"></div>
+  </div>
 
-    async function loadHistoricalNotifications() {
-      try {
-        const response = await fetch(`http://localhost:8080/notifications?user=${user}`);
-        const notifications = await response.json();
-
-        notifications.forEach(n => {
-          addNotificationToUI(n);
-        });
-      } catch (error) {
-        console.error("Errore caricamento notifiche storiche:", error);
-      }
-    }
-
-    function addNotificationToUI(n) {
-      const li = document.createElement("li");
-      li.textContent = `[${n.sender}] ${n.message}`;
-      li.style.cursor = "pointer";
-
-      if (n.read) {
-        li.style.textDecoration = "line-through";
-      }
-
-      li.onclick = () => {
-        fetch(`http://localhost:8080/notifications/${n.id}/read`, {
-          method: "POST"
-        }).then(() => {
-          li.style.textDecoration = "line-through";
-        });
-      };
-
-      ul.prepend(li);
-    }
-
-    loadHistoricalNotifications();
-
-    const socket = new WebSocket(`ws://localhost:8080/ws?user=${user}`);
-    const ul = document.getElementById("notifications");
-
-    socket.onmessage = (event) => {
-      const n = JSON.parse(event.data);
-      addNotificationToUI(n);
-    };
-
-    document.getElementById("send-form").onsubmit = async (e) => {
-      e.preventDefault();
-      const receiver = document.getElementById("receiver").value;
-      const message = document.getElementById("message").value;
-
-      await fetch("http://localhost:8080/notifications", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({sender: user, receiver, message})
-      });
-
-      document.getElementById("message").value = "";
-    };
-  </script>
+  <script src="/static/js/app.js"></script>
 </body>
-
 </html>

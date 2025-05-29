@@ -4,20 +4,27 @@
 ## Project Structure
 
 /PushNotificationService/
+├── cmd/
+│   └── server/
+│       └── main.go
+├── internal/
+│   ├── config/
+│   │   └── config.go
+│   ├── handlers/
+│   │   ├── websocket.go
+│   │   └── notifications.go
+│   ├── services/
+│   │   ├── notification_service.go
+│   │   └── kafka_service.go
+│   ├── repositories/
+│   │   └── notification_repository.go
+│   ├── models/
+│   │   └── notification.go
+│   └── websocket/
+│       └── hub.go
+├── pkg/
+│   └── logger/
+│       └── logger.go
 ├── docker-compose.yml
 ├── go.mod
-├── internal/
-│   ├── kafka/
-│   │   ├── producer.go
-│   │   └── consumer.go
-│   ├── websocket/
-│   │   └── server.go
-│   ├── db/
-│   │   └── mongo.go
-│   └── models/
-│       └── notification.go
-├── cmd/
-│   └── server/main.go
-├── web/
-│   └── client.html
 └── README.md

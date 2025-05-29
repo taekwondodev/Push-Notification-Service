@@ -32,6 +32,17 @@ func (h *Hub) Register(user string, conn *websocket.Conn) {
 	log.Printf("[%s] connected\n", user)
 }
 
+func (h *Hub) Unregister(user string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	if conn, ok := h.clients[user]; ok {
+		conn.Close()
+		delete(h.clients, user)
+		log.Printf("[%s] disconnected\n", user)
+	}
+}
+
 func (h *Hub) SendToUser(user string, message models.Notification) {
 	h.mu.Lock()
 	defer h.mu.Unlock()

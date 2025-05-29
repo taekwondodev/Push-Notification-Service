@@ -2,138 +2,70 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/segmentio/kafka-go"
-	"github.com/taekwondodev/push-notification-service/internal/db"
-	"github.com/taekwondodev/push-notification-service/internal/models"
+	"github.com/taekwondodev/push-notification-service/internal/config"
+	"github.com/taekwondodev/push-notification-service/internal/controller"
+	"github.com/taekwondodev/push-notification-service/internal/repository"
+	"github.com/taekwondodev/push-notification-service/internal/service"
 	"github.com/taekwondodev/push-notification-service/internal/websocket"
 )
 
-var hub *websocket.Hub
-var repo *db.NotificationRepository
-
 func main() {
-	hub := websocket.NewHub()
-	repo, err := db.NewNotificationRepository()
-	if err != nil {
-		log.Fatal("Failed to connect to MongoDB:", err)
-	}
-	defer repo.Close()
-	router := http.NewServeMux()
+    cfg := config.Load()
 
-	go consumeKafka(hub, repo)
-
-	router.HandleFunc("GET /ws", handleWebSocket)
-	router.HandleFunc("GET /notifications", getNotificationsHandler)
-	router.HandleFunc("POST /notifications", postNotificationHandler)
-	router.HandleFunc("POST /notifications/{id}/read", markNotificationAsRead)
-
-	log.Println("WebSocket server listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", router))
-}
-
-func consumeKafka(hub *websocket.Hub, db *db.NotificationRepository) {
-	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers: []string{"localhost:9092"},
-		Topic:   "notifications",
-		GroupID: "websocket-notifier",
-	})
-	defer reader.Close()
-
-	log.Println("Kafka consumer started...")
-	for {
-		msg, err := reader.ReadMessage(context.Background())
-		if err != nil {
-			log.Println("error Kafka:", err)
-			continue
-		}
-
-		var notif models.Notification
-		if err := json.Unmarshal(msg.Value, &notif); err != nil {
-			log.Println("error parsing notification:", err)
-			continue
-		}
-
-		notif.CreatedAt = time.Now().Unix()
-
-		if err := db.SaveNotification(context.Background(), &notif); err != nil {
-			log.Println("error saving notification to DB:", err)
-		}
-
-		hub.SendToUser(notif.Receiver, notif)
-	}
-}
-
-func handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	user := r.URL.Query().Get("user")
-	if user == "" {
-		http.Error(w, "need user", http.StatusBadRequest)
-		return
-	}
-
-	conn, err := hub.Upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println("WebSocket upgrade failed:", err)
-		return
-	}
-	hub.Register(user, conn)
-
-	log.Println("User connected via WebSocket:", user)
-}
-
-func getNotificationsHandler(w http.ResponseWriter, r *http.Request) {
-	user := r.URL.Query().Get("user")
-	if user == "" {
-		http.Error(w, "need user", http.StatusBadRequest)
-		return
-	}
-
-	notifications, err := repo.GetNotifications(r.Context(), user)
-	if err != nil {
-		http.Error(w, "failed to fetch notifications", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(notifications)
-}
-
-func postNotificationHandler(w http.ResponseWriter, r *http.Request) {
-	var n models.Notification
-	if err := json.NewDecoder(r.Body).Decode(&n); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
-	}
-	n.CreatedAt = time.Now().Unix()
-	n.Read = false
-
-	msg, _ := json.Marshal(n)
-	writer := kafka.Writer{
-		Addr:     kafka.TCP("kafka:9092"),
-		Topic:    "notifications",
-		Balancer: &kafka.LeastBytes{},
-	}
-	defer writer.Close()
-
-	err := writer.WriteMessages(r.Context(), kafka.Message{Value: msg})
-	if err != nil {
-		http.Error(w, "Kafka error", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusAccepted)
-}
-
-func markNotificationAsRead(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	if err := repo.MarkAsRead(r.Context(), id); err != nil {
-		http.Error(w, "Failed to mark notification as read", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
+    repo, err := repository.NewMongoNotificationRepository(cfg.Mongo.URI, cfg.Mongo.Database)
+    if err != nil {
+        log.Fatal("failed to connect to database", "error", err)
+    }
+    defer repo.Close()
+    
+    notifService := service.NewNotificationService(repo)
+    hub := websocket.NewHub()
+    kafkaService := service.NewKafkaService(&cfg.Kafka, hub, notifService)
+    
+    notifController := controller.NewNotificationController(notifService, kafkaService)
+    wsController := controller.NewWebSocketController(hub)
+    
+    ctx, cancel := context.WithCancel(context.Background())
+    go kafkaService.StartConsumer(ctx)
+    
+    router := http.NewServeMux()
+    router.HandleFunc("GET /ws", wsController.HandleConnection)
+    router.HandleFunc("GET /notifications", notifController.GetNotifications)
+    router.HandleFunc("POST /notifications", notifController.CreateNotification)
+    router.HandleFunc("POST /notifications/{id}/read", notifController.MarkAsRead)
+    
+    server := &http.Server{
+        Addr:    ":" + cfg.Server.Port,
+        Handler: router,
+    }
+    
+    go func() {
+        log.Println("server starting", "port", cfg.Server.Port)
+        if err := server.ListenAndServe(); err != http.ErrServerClosed {
+            log.Fatal("server failed", "error", err)
+        }
+    }()
+    
+    quit := make(chan os.Signal, 1)
+    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+    <-quit
+    
+    log.Println("shutting down server...")
+    
+    cancel()
+    ctx, cancelShutdown := context.WithTimeout(context.Background(), 30*time.Second)
+    defer cancelShutdown()
+    
+    if err := server.Shutdown(ctx); err != nil {
+        log.Fatal("server forced to shutdown", "error", err)
+    }
+    
+    log.Println("server exited")
 }
