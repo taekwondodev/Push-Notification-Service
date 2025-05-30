@@ -33,7 +33,7 @@ func (s *NotificationService) CreateNotification(ctx context.Context, notificati
 }
 
 func (s *NotificationService) GetNotificationsByReceiver(ctx context.Context, receiver string, unread bool) ([]models.Notification, error) {
-	notifications, err := s.repo.FindByFilter(ctx, receiver, unread)
+	notifications, err := s.repo.FindByReceiver(ctx, receiver, unread)
 	if err != nil {
 		return nil, err
 	}

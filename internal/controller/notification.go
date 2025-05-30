@@ -3,10 +3,9 @@ package controller
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/taekwondodev/push-notification-service/internal/customerrors"
-	"github.com/taekwondodev/push-notification-service/internal/models"
+	"github.com/taekwondodev/push-notification-service/internal/middleware"
 	"github.com/taekwondodev/push-notification-service/internal/service"
 )
 
@@ -23,12 +22,16 @@ func NewNotificationController(notifSvc *service.NotificationService, kafkaSvc *
 }
 
 func (c *NotificationController) GetNotifications(w http.ResponseWriter, r *http.Request) error {
-	user, unreadOnly, err := c.parseGetNotificationsRequest(r)
+	username, err := middleware.GetUsernameFromContext(r.Context())
+	if err != nil {
+		return err
+	}
+	unreadOnly, err := middleware.GetUnreadFromContext(r.Context())
 	if err != nil {
 		return err
 	}
 
-	notifications, err := c.notifSvc.GetNotificationsByReceiver(r.Context(), user, unreadOnly)
+	notifications, err := c.notifSvc.GetNotificationsByReceiver(r.Context(), username, unreadOnly)
 	if err != nil {
 		return err
 	}
@@ -37,7 +40,7 @@ func (c *NotificationController) GetNotifications(w http.ResponseWriter, r *http
 }
 
 func (c *NotificationController) CreateNotification(w http.ResponseWriter, r *http.Request) error {
-	notification, err := c.parseCreateNotificationRequest(r)
+	notification, err := middleware.GetNotificationFromContext(r.Context())
 	if err != nil {
 		return err
 	}
@@ -62,37 +65,6 @@ func (c *NotificationController) MarkAsRead(w http.ResponseWriter, r *http.Reque
 
 	w.WriteHeader(http.StatusOK)
 	return nil
-}
-
-func (c *NotificationController) parseGetNotificationsRequest(r *http.Request) (string, bool, error) {
-	user := r.URL.Query().Get("user")
-	if user == "" {
-		return "", false, customerrors.ErrBadRequest
-	}
-
-	var unread *bool
-	if unreadStr := r.URL.Query().Get("unread"); unreadStr != "" {
-		unreadOnly, err := strconv.ParseBool(unreadStr)
-		if err != nil {
-			return "", false, customerrors.ErrBadRequest
-		}
-		unread = &unreadOnly
-	}
-
-	return user, *unread, nil
-}
-
-func (c *NotificationController) parseCreateNotificationRequest(r *http.Request) (*models.Notification, error) {
-	var notification models.Notification
-	if err := json.NewDecoder(r.Body).Decode(&notification); err != nil {
-		return nil, customerrors.ErrBadRequest
-	}
-
-	if notification.Sender == "" || notification.Receiver == "" || notification.Message == "" {
-		return nil, customerrors.ErrBadRequest
-	}
-
-	return &notification, nil
 }
 
 func (c *NotificationController) writeResponse(w http.ResponseWriter, status int, data interface{}) error {

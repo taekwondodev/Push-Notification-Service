@@ -19,18 +19,46 @@ func SetupRoutes(notifC *controller.NotificationController, wsC *controller.WebS
 	return router
 }
 
-func applyMiddleware(h middleware.HandlerFunc) http.HandlerFunc {
-	handlerWithLogging := middleware.LoggingMiddleware(h)
-	errorHandler := middleware.ErrorHandler(handlerWithLogging)
-	return middleware.CorsMiddleware(errorHandler)
-}
-
 func setupNotificationRoutes(notifC *controller.NotificationController) {
-	router.Handle("POST /notifications", applyMiddleware(notifC.CreateNotification))
-	router.Handle("GET /notifications", applyMiddleware(notifC.GetNotifications))
+	router.Handle("POST /notifications", applyPostMiddleware(notifC.CreateNotification))
+	router.Handle("GET /notifications", applyGetMiddleware(notifC.GetNotifications))
 	router.Handle("PATCH /notifications/{id}", applyMiddleware(notifC.MarkAsRead))
 }
 
 func setupWSRoutes(wsC *controller.WebSocketController) {
 	router.Handle("GET /ws", applyMiddleware(wsC.HandleConnection))
+}
+
+func applyMiddleware(h middleware.HandlerFunc) http.HandlerFunc {
+	return middleware.CorsMiddleware(
+		middleware.ErrorHandler(
+			middleware.LoggingMiddleware(
+				middleware.AuthMiddleware(h),
+			),
+		),
+	)
+}
+
+func applyPostMiddleware(h middleware.HandlerFunc) http.HandlerFunc {
+	return middleware.CorsMiddleware(
+		middleware.ErrorHandler(
+			middleware.LoggingMiddleware(
+				middleware.AuthMiddleware(
+					middleware.BodyParsingMiddleware(h),
+				),
+			),
+		),
+	)
+}
+
+func applyGetMiddleware(h middleware.HandlerFunc) http.HandlerFunc {
+	return middleware.CorsMiddleware(
+		middleware.ErrorHandler(
+			middleware.LoggingMiddleware(
+				middleware.AuthMiddleware(
+					middleware.QueryParsingMiddleware(h),
+				),
+			),
+		),
+	)
 }

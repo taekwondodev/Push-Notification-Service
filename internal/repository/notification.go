@@ -53,21 +53,13 @@ func NewMongoNotificationRepository(uri, database string) NotificationRepository
 }
 
 func (r *mongoNotificationRepository) Save(ctx context.Context, notification *models.Notification) error {
-	if notification.ID.IsZero() {
-		notification.ID = primitive.NewObjectID()
-	}
-
 	_, err := r.collection.InsertOne(ctx, notification)
 	return err
 }
 
 func (r *mongoNotificationRepository) FindByReceiver(ctx context.Context, receiver string, unreadOnly bool) ([]models.Notification, error) {
-	mongoFilter := r.buildMongoFilter(filter)
-
-	opts := options.Find().
-		SetSort(bson.D{{Key: "createdAt", Value: -1}}).
-		SetLimit(filter.Limit).
-		SetSkip(filter.Offset)
+	mongoFilter := r.buildMongoFilter(receiver, unreadOnly)
+	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}})
 
 	cursor, err := r.collection.Find(ctx, mongoFilter, opts)
 	if err != nil {
@@ -105,14 +97,7 @@ func (r *mongoNotificationRepository) Close() error {
 
 func (r *mongoNotificationRepository) buildMongoFilter(receiver string, unread bool) bson.M {
 	mongoFilter := bson.M{}
-
-	if receiver != "" {
-		mongoFilter["receiver"] = receiver
-	}
-
-	if filter.Sender != "" {
-		mongoFilter["sender"] = filter.Sender
-	}
+	mongoFilter["receiver"] = receiver
 
 	if unread {
 		mongoFilter["$or"] = []bson.M{
