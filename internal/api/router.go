@@ -28,7 +28,7 @@ func applyMiddleware(h middleware.HandlerFunc) http.HandlerFunc {
 func setupNotificationRoutes(notifC *controller.NotificationController) {
 	router.Handle("POST /notifications", applyMiddleware(notifC.CreateNotification))
 	router.Handle("GET /notifications", applyMiddleware(notifC.GetNotifications))
-	router.Handle("POST /notifications/{id}/read", applyMiddleware(notifC.MarkAsRead))
+	router.Handle("PATCH /notifications/{id}", applyMiddleware(notifC.MarkAsRead))
 }
 
 func setupWSRoutes(wsC *controller.WebSocketController) {

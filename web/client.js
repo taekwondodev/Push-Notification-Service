@@ -144,9 +144,9 @@ class NotificationApp {
       const response = await fetch(
         `http://127.0.0.1:8080/notifications/${encodeURIComponent(
           notificationId
-        )}/read`,
+        )}`,
         {
-          method: "POST",
+          method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
