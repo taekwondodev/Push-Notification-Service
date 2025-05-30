@@ -43,7 +43,13 @@ class NotificationApp {
         url.searchParams.append("unread", "true");
       }
 
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Username": this.user,
+        },
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -71,7 +77,7 @@ class NotificationApp {
       this.updateConnectionStatus("connecting", "Connecting...");
 
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${protocol}//127.0.0.1:8080/ws?user=${encodeURIComponent(
+      const wsUrl = `${protocol}//127.0.0.1:8080/ws?username=${encodeURIComponent(
         this.user
       )}`;
 
@@ -213,6 +219,7 @@ class NotificationApp {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
+            "X-User-Username": this.user,
           },
         }
       );
@@ -248,6 +255,7 @@ class NotificationApp {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-User-Username": this.user,
         },
         body: JSON.stringify({
           sender: this.user,

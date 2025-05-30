@@ -7,7 +7,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/taekwondodev/push-notification-service/internal/customerrors"
-	"github.com/taekwondodev/push-notification-service/internal/middleware"
 	ws "github.com/taekwondodev/push-notification-service/internal/websocket"
 )
 
@@ -22,8 +21,8 @@ func NewWebSocketController(hub *ws.Hub) *WebSocketController {
 }
 
 func (h *WebSocketController) HandleConnection(w http.ResponseWriter, r *http.Request) error {
-	username, err := middleware.GetUsernameFromContext(r.Context())
-	if err != nil {
+	username := r.URL.Query().Get("username")
+	if username == "" {
 		return customerrors.ErrBadRequest
 	}
 

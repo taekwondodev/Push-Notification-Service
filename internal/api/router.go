@@ -26,7 +26,7 @@ func setupNotificationRoutes(notifC *controller.NotificationController) {
 }
 
 func setupWSRoutes(wsC *controller.WebSocketController) {
-	router.Handle("GET /ws", applyMiddleware(wsC.HandleConnection))
+	router.Handle("GET /ws", applyWSMiddleware(wsC.HandleConnection))
 }
 
 func applyMiddleware(h middleware.HandlerFunc) http.HandlerFunc {
@@ -59,6 +59,14 @@ func applyGetMiddleware(h middleware.HandlerFunc) http.HandlerFunc {
 					middleware.QueryParsingMiddleware(h),
 				),
 			),
+		),
+	)
+}
+
+func applyWSMiddleware(h middleware.HandlerFunc) http.HandlerFunc {
+	return middleware.CorsMiddleware(
+		middleware.ErrorHandler(
+			middleware.LoggingMiddleware(h),
 		),
 	)
 }

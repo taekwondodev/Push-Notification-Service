@@ -34,10 +34,10 @@ func extractUserFromHeaders(r *http.Request) (string, error) {
 }
 
 func GetUsernameFromContext(ctx context.Context) (string, error) {
-	usernameVal := ctx.Value(UnreadContextKey)
-	username, ok := usernameVal.(*string)
-	if !ok || username == nil {
+	usernameVal := ctx.Value(UserContextKey)
+	username, ok := usernameVal.(string)
+	if !ok {
 		return "", customerrors.ErrBadRequest
 	}
-	return *username, nil
+	return username, nil
 }
