@@ -6,6 +6,7 @@ class NotificationApp {
     this.userLabel = document.getElementById("user-label");
     this.sendForm = document.getElementById("send-form");
     this.connectionStatus = document.getElementById("connection-status");
+    this.showUnreadOnly = false;
 
     this.init();
   }
@@ -13,6 +14,7 @@ class NotificationApp {
   async init() {
     await this.promptForUsername();
     this.setupEventListeners();
+    this.addFilterButtons();
     await this.loadHistoricalNotifications();
     this.connectWebSocket();
   }
@@ -34,11 +36,14 @@ class NotificationApp {
     try {
       this.updateConnectionStatus("connecting", "Loading notifications...");
 
-      const response = await fetch(
-        `http://127.0.0.1:8080/notifications?user=${encodeURIComponent(
-          this.user
-        )}`
-      );
+      const url = new URL(`http://127.0.0.1:8080/notifications`);
+      url.searchParams.append("user", this.user);
+
+      if (this.showUnreadOnly) {
+        url.searchParams.append("unread", "true");
+      }
+
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -49,12 +54,12 @@ class NotificationApp {
       // Clear existing notifications
       this.notificationsList.innerHTML = "";
 
-      // Add notifications in reverse order (newest first)
-      notifications.reverse().forEach((notification) => {
+      notifications.forEach((notification) => {
         this.addNotificationToUI(notification);
       });
 
-      console.log(`Loaded ${notifications.length} historical notifications`);
+      const filterText = this.showUnreadOnly ? "unread" : "all";
+      console.log(`Loaded ${notifications.length} ${filterText} notifications`);
     } catch (error) {
       console.error("Error loading historical notifications:", error);
       this.showError("Failed to load notifications. Please refresh the page.");
@@ -106,6 +111,65 @@ class NotificationApp {
       console.error("Failed to create WebSocket connection:", error);
       this.updateConnectionStatus("disconnected", "Failed to Connect");
     }
+  }
+
+  addFilterButtons() {
+    const filterContainer = document.createElement("div");
+    filterContainer.className = "filter-container";
+    filterContainer.style.cssText = `
+      margin-bottom: 15px;
+      display: flex;
+      gap: 10px;
+    `;
+
+    const allBtn = document.createElement("button");
+    allBtn.textContent = "All";
+    allBtn.className = "btn filter-btn active";
+    allBtn.style.cssText = `
+      padding: 8px 16px;
+      font-size: 14px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+    const unreadBtn = document.createElement("button");
+    unreadBtn.textContent = "Unread Only";
+    unreadBtn.className = "btn filter-btn";
+    unreadBtn.style.cssText = `
+      padding: 8px 16px;
+      font-size: 14px;
+      background: #95a5a6;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+
+    allBtn.addEventListener("click", () => {
+      this.showUnreadOnly = false;
+      this.updateFilterButtons(allBtn, unreadBtn);
+      this.loadHistoricalNotifications();
+    });
+
+    unreadBtn.addEventListener("click", () => {
+      this.showUnreadOnly = true;
+      this.updateFilterButtons(unreadBtn, allBtn);
+      this.loadHistoricalNotifications();
+    });
+    filterContainer.appendChild(allBtn);
+    filterContainer.appendChild(unreadBtn);
+
+    const notificationsSection = document.querySelector(
+      ".notifications-section"
+    );
+    notificationsSection.insertBefore(filterContainer, this.notificationsList);
+  }
+
+  updateFilterButtons(activeBtn, inactiveBtn) {
+    activeBtn.style.background = "#3498db";
+    inactiveBtn.style.background = "#95a5a6";
   }
 
   addNotificationToUI(notification) {
