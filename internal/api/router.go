@@ -12,7 +12,10 @@ var router *http.ServeMux
 func SetupRoutes(notifC *controller.NotificationController, wsC *controller.WebSocketController) *http.ServeMux {
 	router = http.NewServeMux()
 
-	router.Handle("/", middleware.CorsMiddleware(router))
+	router.Handle("OPTIONS /", middleware.CorsMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})))
+
 	setupNotificationRoutes(notifC)
 	setupWSRoutes(wsC)
 

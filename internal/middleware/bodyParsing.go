@@ -22,11 +22,17 @@ func BodyParsingMiddleware(next HandlerFunc) HandlerFunc {
 			return customerrors.ErrBadRequest
 		}
 
-		if notification.Sender == "" || notification.Receiver == "" || notification.Message == "" {
+		if notification.Receiver == "" || notification.Message == "" {
 			return customerrors.ErrBadRequest
 		}
 
-		ctx := context.WithValue(r.Context(), NotifBodyContextKey, notification)
+		sender, err := GetUsernameFromContext(r.Context())
+		if err != nil {
+			return err
+		}
+		notification.Sender = sender
+
+		ctx := context.WithValue(r.Context(), NotifBodyContextKey, &notification)
 		*r = *r.WithContext(ctx)
 
 		return next(w, r)

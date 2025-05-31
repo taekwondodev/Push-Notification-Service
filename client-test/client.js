@@ -36,8 +36,7 @@ class NotificationApp {
     try {
       this.updateConnectionStatus("connecting", "Loading notifications...");
 
-      const url = new URL(`http://127.0.0.1:8080/notifications`);
-      url.searchParams.append("user", this.user);
+      const url = new URL(`http://localhost:8080/notifications`);
 
       if (this.showUnreadOnly) {
         url.searchParams.append("unread", "true");
@@ -60,9 +59,15 @@ class NotificationApp {
       // Clear existing notifications
       this.notificationsList.innerHTML = "";
 
-      notifications.forEach((notification) => {
-        this.addNotificationToUI(notification);
-      });
+      if (!Array.isArray(notifications)) {
+        return;
+      }
+
+      if (notifications.length !== 0) {
+        notifications.forEach((notification) => {
+          this.addNotificationToUI(notification);
+        });
+      }
 
       const filterText = this.showUnreadOnly ? "unread" : "all";
       console.log(`Loaded ${notifications.length} ${filterText} notifications`);
@@ -77,7 +82,7 @@ class NotificationApp {
       this.updateConnectionStatus("connecting", "Connecting...");
 
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${protocol}//127.0.0.1:8080/ws?username=${encodeURIComponent(
+      const wsUrl = `${protocol}//localhost:8080/ws?username=${encodeURIComponent(
         this.user
       )}`;
 
@@ -212,7 +217,7 @@ class NotificationApp {
 
     try {
       const response = await fetch(
-        `http://127.0.0.1:8080/notifications/${encodeURIComponent(
+        `http://localhost:8080/notifications/${encodeURIComponent(
           notificationId
         )}`,
         {
@@ -251,14 +256,13 @@ class NotificationApp {
     }
 
     try {
-      const response = await fetch("http://127.0.0.1:8080/notifications", {
+      const response = await fetch("http://localhost:8080/notifications", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-User-Username": this.user,
         },
         body: JSON.stringify({
-          sender: this.user,
           receiver: receiver,
           message: message,
         }),

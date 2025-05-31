@@ -100,6 +100,5 @@ func (k *KafkaService) processMessage(ctx context.Context, reader *kafka.Reader)
 	}
 
 	k.hub.SendToUser(notif.Receiver, notif)
-	log.Printf("Notification processed for user: %s", notif.Receiver)
 	return nil
 }

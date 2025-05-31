@@ -5,6 +5,7 @@ import (
 
 	"github.com/taekwondodev/push-notification-service/internal/models"
 	"github.com/taekwondodev/push-notification-service/internal/repository"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type NotificationServiceInterface interface {
@@ -25,6 +26,10 @@ func NewNotificationService(repo repository.NotificationRepository) *Notificatio
 }
 
 func (s *NotificationService) CreateNotification(ctx context.Context, notification *models.Notification) error {
+	if notification.ID.IsZero() {
+		notification.ID = primitive.NewObjectID()
+	}
+
 	if err := s.repo.Save(ctx, notification); err != nil {
 		return err
 	}

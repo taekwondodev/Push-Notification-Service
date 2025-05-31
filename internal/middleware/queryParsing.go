@@ -12,13 +12,13 @@ const UnreadContextKey string = "unread"
 
 func QueryParsingMiddleware(next HandlerFunc) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) error {
-		var unread *bool
+		unread := false
 		if unreadStr := r.URL.Query().Get("unread"); unreadStr != "" {
 			unreadOnly, err := strconv.ParseBool(unreadStr)
 			if err != nil {
 				return customerrors.ErrBadRequest
 			}
-			unread = &unreadOnly
+			unread = unreadOnly
 		}
 
 		ctx := context.WithValue(r.Context(), UnreadContextKey, unread)
@@ -30,9 +30,9 @@ func QueryParsingMiddleware(next HandlerFunc) HandlerFunc {
 
 func GetUnreadFromContext(ctx context.Context) (bool, error) {
 	unreadVal := ctx.Value(UnreadContextKey)
-	unread, ok := unreadVal.(*bool)
-	if !ok || unread == nil {
+	unread, ok := unreadVal.(bool)
+	if !ok {
 		return false, customerrors.ErrBadRequest
 	}
-	return *unread, nil
+	return unread, nil
 }
