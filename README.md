@@ -39,6 +39,24 @@ A real-time push notification service built with Go, featuring WebSocket connect
                    └─────────────┘    └─────────────┘
 ```
 
+## API Endpoints
+
+Complete API documentation is available in OpenAPI 3.0 format:
+
+- [![Open in Swagger Editor](https://img.shields.io/badge/Swagger-Editor-%23Clojure?style=for-the-badge&logo=swagger)](https://editor.swagger.io/?url=https://raw.githubusercontent.com/taekwondodev/push-notification-service/main/api/openapi.yaml)
+
+- [Raw OpenAPI Spec](api/openapi.yaml)
+
+## Authentication
+
+The service expects JWT validation to be handled by an upstream gateway. The gateway should:
+
+1. Validate JWT tokens
+2. Extract user information
+3. Forward requests with `X-User-Username` header
+
+For development, you can test without authentication by setting the header manually.
+
 ## Quick Start
 
 ### Prerequisites
@@ -68,42 +86,6 @@ The service is configured via environment variables:
 | `KAFKA_TOPIC`    | `notifications`             | Kafka topic name          |
 | `KAFKA_GROUP_ID` | `websocket-notifier`        | Kafka consumer group ID   |
 
-## API Endpoints
-
-### REST API
-
-```http
-# Get notifications for authenticated user
-GET /notifications?unread=true
-Headers: X-User-Username: alice
-
-# Send a notification
-POST /notifications
-Headers: X-User-Username: alice
-Body: {
-  "receiver": "bob",
-  "message": "Hello World!"
-}
-
-# Mark notification as read
-PATCH /notifications/{id}
-Headers: X-User-Username: alice
-```
-
-### WebSocket
-
-```javascript
-// Example in Javascript:
-// Connect to WebSocket
-const ws = new WebSocket('ws://localhost:8080/ws?username=alice');
-
-// Listen for notifications
-ws.onmessage = (event) => {
-  const notification = JSON.parse(event.data);
-  console.log('New notification:', notification);
-};
-```
-
 ## Project Structure
 
 ```
@@ -132,13 +114,3 @@ docker run --rm -p 3000:80 notification-client
 
 open http://localhost:3000/
 ```
-
-## Authentication
-
-The service expects JWT validation to be handled by an upstream gateway. The gateway should:
-
-1. Validate JWT tokens
-2. Extract user information
-3. Forward requests with `X-User-Username` header
-
-For development, you can test without authentication by setting the header manually.
