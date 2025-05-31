@@ -70,7 +70,7 @@ For development, you can test without authentication by setting the header manua
 git clone https://github.com/taekwondodev/push-notification-service.git
 cd push-notification-service
 
-docker-compose up
+docker compose up
 ```
 
 ## Configuration
