@@ -24,7 +24,7 @@ A real-time push notification service built with Go, featuring WebSocket connect
 - **Production ready** with proper logging and error handling
 
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
