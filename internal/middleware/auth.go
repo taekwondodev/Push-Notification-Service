@@ -27,7 +27,7 @@ func extractUserFromHeaders(r *http.Request) (string, error) {
 	username := r.Header.Get("X-User-Username")
 
 	if username == "" {
-		return "", customerrors.ErrBadRequest
+		return "", customerrors.ErrNotAuthenticated
 	}
 
 	return username, nil
@@ -37,7 +37,7 @@ func GetUsernameFromContext(ctx context.Context) (string, error) {
 	usernameVal := ctx.Value(UserContextKey)
 	username, ok := usernameVal.(string)
 	if !ok {
-		return "", customerrors.ErrBadRequest
+		return "", customerrors.ErrNotAuthenticated
 	}
 	return username, nil
 }

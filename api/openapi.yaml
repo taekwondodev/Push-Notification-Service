@@ -18,15 +18,10 @@ info:
   contact:
     name: taekwondodev
     url: https://github.com/taekwondodev/push-notification-service
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
 
 servers:
   - url: http://localhost:8080
     description: Development server
-  - url: https://api.yourservice.com
-    description: Production server
 
 tags:
   - name: notifications

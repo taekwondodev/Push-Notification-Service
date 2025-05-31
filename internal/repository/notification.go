@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/taekwondodev/push-notification-service/internal/customerrors"
 	"github.com/taekwondodev/push-notification-service/internal/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -81,12 +82,20 @@ func (r *mongoNotificationRepository) MarkAsRead(ctx context.Context, id string)
 		return err
 	}
 
-	_, err = r.collection.UpdateOne(
+	result, err := r.collection.UpdateOne(
 		ctx,
 		bson.M{"_id": objID},
 		bson.M{"$set": bson.M{"read": true}},
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return customerrors.ErrNotificationNotFound
+	}
+
+	return nil
 }
 
 func (r *mongoNotificationRepository) Close() error {
