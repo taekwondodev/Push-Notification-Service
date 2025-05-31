@@ -1,4 +1,13 @@
 services:
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongo
+      - kafka
   kafka:
     image: bitnami/kafka:3.7
     ports:

@@ -1,0 +1,41 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# IDE files
+.vscode
+.idea
+
+# Environment files
+.env
+.env.local
+
+# Dependencies (will be downloaded in container)
+vendor/
+
+# Build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+
+# Web assets (se non serviti dal Go server)
+web/
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
