@@ -1,6 +1,6 @@
-# Push Notification Service
-
 <div align="center">
+
+# Push Notification Service
 
 ![Go Version](https://img.shields.io/badge/Go-1.24.3-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-blue.svg)
