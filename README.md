@@ -7,6 +7,7 @@
 ![Kafka](https://img.shields.io/badge/kafka-3.7-orange.svg)
 ![MongoDB](https://img.shields.io/badge/mongodb-6.0-green.svg)
 ![WebSocket](https://img.shields.io/badge/websocket-ready-purple.svg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/taekwondodev/push-notification-service)](https://goreportcard.com/report/github.com/taekwondodev/push-notification-service)
 
 A real-time push notification service built with Go, featuring WebSocket connections, Kafka message queuing, and MongoDB persistence. Designed for microservices architecture with JWT authentication support.
 
