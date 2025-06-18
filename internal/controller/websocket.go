@@ -43,7 +43,10 @@ func (h *WebSocketController) HandleConnection(w http.ResponseWriter, r *http.Re
 }
 
 func (h *WebSocketController) handleConnectionLifecycle(user string, conn *websocket.Conn) {
-	defer h.hub.Unregister(user)
+	defer func() {
+		conn.Close()
+		h.hub.Unregister(user)
+	}()
 
 	h.setupConnectionTimeouts(conn)
 
