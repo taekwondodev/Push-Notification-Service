@@ -19,6 +19,8 @@ func main() {
 
 	notifService := service.NewNotificationService(repo)
 	hub := websocket.NewHub()
+	defer hub.Shutdown()
+
 	kafkaService := service.NewKafkaService(&cfg.Kafka, hub, notifService)
 
 	notifController := controller.NewNotificationController(notifService, kafkaService)

@@ -2,7 +2,7 @@
 
 # Push Notification Service
 
-![Go Version](https://img.shields.io/badge/Go-1.24.3-blue.svg)
+![Go Version](https://img.shields.io/badge/Go-1.24.4-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-blue.svg)
 ![Kafka](https://img.shields.io/badge/kafka-3.7-orange.svg)
 ![MongoDB](https://img.shields.io/badge/mongodb-6.0-green.svg)
@@ -24,7 +24,6 @@ A real-time push notification service built with Go, featuring WebSocket connect
 - **RESTful API** for notification management
 - **Graceful shutdown** support
 - **Production ready** with proper logging and error handling
-
 
 ## Architecture
 
@@ -80,7 +79,7 @@ docker compose up
 The service is configured via environment variables:
 
 | Variable         | Default                     | Description               |
-|------------------|-----------------------------|---------------------------|
+| ---------------- | --------------------------- | ------------------------- |
 | `PORT`           | `8080`                      | HTTP server port          |
 | `MONGO_URI`      | `mongodb://localhost:27017` | MongoDB connection string |
 | `MONGO_DATABASE` | `notificationsdb`           | MongoDB database name     |
