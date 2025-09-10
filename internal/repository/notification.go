@@ -25,7 +25,7 @@ type mongoNotificationRepository struct {
 	collection *mongo.Collection
 }
 
-func NewMongoNotificationRepository(uri, database string) NotificationRepository {
+func NewMongoNotificationRepository(uri, database string) *mongoNotificationRepository {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
